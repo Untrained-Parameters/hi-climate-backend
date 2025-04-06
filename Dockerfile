@@ -61,4 +61,4 @@ EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
 
-CMD ["poetry", "run", "uvicorn", "app.main:app", "--reload", "--port", "8000"]
+CMD ["poetry", "run", "uvicorn", "app.main:app", "--reload", "--port", "8000", "--host", "0.0.0.0"]
