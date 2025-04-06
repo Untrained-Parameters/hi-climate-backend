@@ -233,12 +233,17 @@ async def request_from_params(params):
             "extent": "statewide",
             "production": "new",
         }
+    county = None
     for key, value in params.items():
         if key == "location":
             location_data = await get_location(value)
             if location_data:
                 api_defaults["lat"] = location_data[0]["lat"]
                 api_defaults["lng"] = location_data[0]["lon"]
+
+                # extract the county from the location data
+                county = location_data[0].get("display_name", "").split(",")[1].strip()
+                county = county.replace(" County", "")
             else:
                 print(f"Could not find coordinates for location: {value}")
         api_defaults[key] = value.lower() if isinstance(value, str) else value
@@ -268,4 +273,10 @@ async def request_from_params(params):
                 print(f"Error fetching data: {data['error']}")
                 return None
             else:
-                return data
+                return {
+                    "data": data,
+                    "extra_params": {
+                        "county": county,
+                        "variable": api_defaults.get("datatype"),
+                        }
+                }

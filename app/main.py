@@ -217,11 +217,14 @@ async def chat_endpoint(request: ChatRequest):
 
         function_call = request_builder.candidates[0].content.parts[0].function_call if request_builder.candidates and request_builder.candidates[0].content.parts else None
 
+        extra_params = None
+
         if function_call:
             print("Function call detected")
             hdcp_response = await request_from_params(
                 function_call.args
             )
+            extra_params = hdcp_response.get("extra_params", None)
             print("HDCP response:", hdcp_response)
             if hdcp_response is None:
                 raise HTTPException(
@@ -229,7 +232,7 @@ async def chat_endpoint(request: ChatRequest):
                 )
             hdcp_response_part = types.Part.from_function_response(
                 name=function_call.name,
-                response={"results": hdcp_response},
+                response={"results": hdcp_response.get("data", None)},
             )
 
             contents.append(types.Content(role="model", parts=[types.Part(function_call=function_call)]))
@@ -269,41 +272,10 @@ async def chat_endpoint(request: ChatRequest):
                     """
                 )
             )
-                
-
-        # if request_builder.candidates and request_builder.candidates[0].content.parts:
-        #     api_request = request_builder.candidates[0].content.parts[0].text
-        #     print(api_request)
-        #     return {"response": api_request}
-
-            # hdcp_response = await get_response_from_request(api_request)
-            # print(hdcp_response)
-
-        # combined_prompt = f"""
-        # Based only on this information from the user request: {hdcp_response}
-        # and the user question: {prompt},
-        # Respond to the user with a short summary that answers the question.
-        # Mention that the data was provided by the HCDP.
-        # Make a comment about the data.
-        # """
-
-        # response = client.models.generate_content(
-        #     model=model,
-        #     contents=combined_prompt,
-        #     config=GenerateContentConfig(
-        #         system_instruction="""
-        #         You are a Hawaii Data Climate Portal AI assistant that helps users with hawaii climate information.
-        #         Base your answer on the information provided mainly from the HCDP.
-        #         """,
-        #         temperature=0,
-        #         tools=[
-        #             Tool(google_search=GoogleSearch()),
-        #         ]
-        #     )
-        # )
 
         if response.candidates and response.candidates[0].content.parts:
-            return {"response": response.candidates[0].content.parts[0].text}
+            return {"response": response.candidates[0].content.parts[0].text,
+                    "extra_params": extra_params}
         else:
             raise HTTPException(
                 status_code=500, detail="Failed to get a valid response from the model."
