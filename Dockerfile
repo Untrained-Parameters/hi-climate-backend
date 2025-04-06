@@ -8,7 +8,7 @@ ENV PYTHONFAULTHANDLER=1 \
     PIP_NO_CACHE_DIR=1 \
     POETRY_HOME="/opt/poetry" \
     POETRY_NO_INTERACTION=true \
-    APP_PATH="/backend" \
+    APP_PATH="/app" \
     VENV_PATH="/venv"
 
 # prepend poetry and venv to path
