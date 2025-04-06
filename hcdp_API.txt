@@ -1,0 +1,237 @@
+HCDP API Endpoints
+
+API base URL: https://api.hcdp.ikewai.org
+
+Header:
+{
+  "Authorization": "Bearer <oauth_token>"
+}
+
+
+/raster
+type: GET
+query fields:
+date: an ISO-8601 formatted date string indicating the date of the data map to retrieve
+returnEmptyNotFound: boolean indicating whether to return an empty geotiff if the requested file is not found. If set to false this will return a 404 if not found.
+datatype: string indicating datatype (rainfall or temperature)
+extent: string indicating the spatial extent of the raster (as above)
+Additional identifying properties (as above)
+returns: Geotiff file data
+Example CURL: 
+curl -k -H "Authorization: Bearer API-AUTH-TOKEN" "https://api.hcdp.ikewai.org/raster?date=2022-02&extent=bi&datatype=rainfall&production=new&period=month"
+/raster/timeseries
+type: GET
+query fields:
+start: an ISO-8601 formatted date string indicating the start of the timeseries range (inclusive)
+end: an ISO-8601 formatted date string indicating the end of the timeseries range (inclusive)
+One of the following
+row and col: the row and column for the grid cell to produce a timeseries of
+index: the 1D index of the value to produce a timeseries of (width * row + col)
+lat and lng: the longitude and latitude of the map location to produce a timeseries of
+datatype: string indicating datatype (rainfall or temperature)
+extent: string indicating the spatial extent of the raster (as above)
+Additional identifying properties (as above)
+returns: JSON object with datetime value pairs
+Example CURL: 
+curl -k -H "Authorization: Bearer API-AUTH-TOKEN" "https://api.hcdp.ikewai.org/raster/timeseries?start=2020-01&end=2023-06&row=324&col=822&extent=statewide&datatype=rainfall&production=new&period=month"
+curl -k -H "Authorization: Bearer API-AUTH-TOKEN" "https://api.hcdp.ikewai.org/raster/timeseries?start=2020-01&end=2023-06&lat=21.539576&lng=-157.965820&extent=statewide&datatype=rainfall&production=new&period=month"
+/genzip/email
+type: POST
+body fields:
+email: the user's email address
+data: an array of JSON objects with the following properties:
+files: An array of file types to be included
+range: A JSON object with the following properties
+start: An ISO-8601 formatted date string indicating the first date to include (inclusive)
+end: An ISO-8601 formatted date string indicating the last date to include (inclusive)
+datatype: string indicating datatype (rainfall or temperature)
+Additional identifying properties (as above)
+zipName (optional): The name of the produced zip file
+returns: A 202 if request was successfully submitted. This will generate a zip file containing the requested files described by the data array and send it to the specified email address
+Example CURL: 
+curl -d '{"email":"<email>","data":[{"datatype":"rainfall","production":"new","period":"month","extent":"statewide","range":{"start":"2019-01","end":"2022-05"},"files":["data_map","metadata"]}]}' -X POST -k -H "Content-Type: application/json" -H "Authorization: Bearer <API-AUTH-TOKEN>" "https://api.hcdp.ikewai.org/genzip/email"
+/genzip/instant/content
+type: POST
+body fields:
+email: the user's email address
+data: an array of JSON objects (see description in /genzip/email)
+returns: Generates a zip file containing the requested files described by the data array and returns the contents
+Example CURL: 
+curl -d '{"email":"<email>","data":[{"datatype":"rainfall","production":"new","period":"month","extent":"statewide","range":{"start":"2019-01","end":"2022-05"},"files":["data_map","metadata"]}]}' -X POST -k -H "Content-Type: application/json" -H "Authorization: Bearer <API-AUTH-TOKEN>" "https://api.hcdp.ikewai.org/genzip/instant/content"
+
+/genzip/instant/link
+type: POST
+body fields:
+email: the user's email address
+data: an array of JSON objects (see description in /genzip/email)
+zipName (optional): The name of the produced zip file
+returns: Generates a zip file containing the requested files described by the data array and returns a link to the data through the files API
+Example CURL: 
+curl -d '{"email":"<email>","data":[{"datatype":"rainfall","production":"new","period":"month","extent":"statewide","range":{"start":"2019-01","end":"2022-05"},"files":["data_map","metadata"]}]}' -X POST -k -H "Content-Type: application/json" -H "Authorization: Bearer <API-AUTH-TOKEN>" "https://api.hcdp.ikewai.org/genzip/instant/link"
+
+/genzip/instant/splitlink
+type: POST
+body fields:
+email: the user's email address
+data: an array of JSON objects (see description in /genzip/email)
+returns: Generates a zip file containing the requested files described by the data array and returns an array of links containing ordered parts of the requested data. These parts can be downloaded and composed into a single file in the order provided by the array to construct the zip file containing the requested data.
+Example CURL: 
+curl -d '{"email":"<email>","data":[{"datatype":"rainfall","production":"new","period":"month","extent":"statewide","range":{"start":"2019-01","end":"2022-05"},"files":["data_map","metadata"]}]}' -X POST -k -H "Content-Type: application/json" -H "Authorization: Bearer <API-AUTH-TOKEN>" "https://api.hcdp.ikewai.org/genzip/instant/splitlink"
+/raw/list
+type: GET
+query fields:
+date: An ISO-8601 formatted date string indicating the date of the data to retrieve
+station_id (optional): The four digit ID of the station to get files for (e.g. 0115). If omitted files for all stations will be returned.
+location (optional): The sensor network location to retrieve files for. Default hawaii
+returns: A list of Files API links for the raw data available for that day produced by loggernet
+Example CURL: 
+curl -k https://api.hcdp.ikewai.org/raw/list?date=2021-11-03 -H "Authorization: Bearer <API-AUTH-TOKEN>"
+
+/production/list
+type: GET
+query fields:
+data: an array of JSON objects (see description in /genzip/email)
+returns: A list of Files API links for the data files described by the data array. This would be the content of a zip file generated by any of the /genzip endpoints.
+Example CURL:
+curl -k https://api.hcdp.ikewai.org/production/list?data=[{'datatype':'rainfall','production':'new','period':'month','extent':'statewide','range':{'start':'2022-01','end':'2022-02'},'files':['data_map','metadata']}] -H "Authorization: Bearer <API-AUTH-TOKEN>"
+
+/files/explore/*
+type: GET
+path parameters
+path of the file to be retrieved. e.g. production/rainfall/new/day/statewide/anom/2020/01
+returns: An array with directory listing information for the directory provided in the path if available, or file data for the file at the requested path if available
+Example CURL: 
+curl -k -H "Authorization: Bearer API-AUTH-TOKEN" "https://api.hcdp.ikewai.org/files/explore/production/rainfall/new/day/statewide/anom/2020/01"
+/files/retrieve/production
+type: GET
+query fields:
+date: an ISO-8601 formatted date string indicating the date of the file to retrieve if relevant (some datasets will not have a temporal component).
+file (optional): string indicating the type of file to download for this dataset. Defaults to data_map
+datatype: string indicating datatype (rainfall or temperature)
+extent: string indicating the spatial extent of the raster (as above)
+Additional identifying properties (as above)
+returns: File data for the requested file or a 404 if the file could not be found
+Example CURL: 
+curl -k -H "Authorization: Bearer API-AUTH-TOKEN" "https://api.hcdp.ikewai.org/files/retrieve/production?date=2022-02&extent=bi&datatype=rainfall&production=new&period=month&type=anom"
+/stations
+Station data documents: This endpoint accepts a query field enabling a mongodb style query('q' field)  to pull back datatypes - the "name" field specifies the type of document - current valid document types are: ["hcdp_station_metadata", "hcdp_station_value"]
+
+
+Station Metadata:
+q: "{'name': 'hcdp_station_metadata'}"
+loc
+Will retrieve a set of metadata documents describing the available sensor stations
+Station Value:
+q: "{
+	'name': 'hcdp_station_value',
+	'value.station_id': ' < station_id > ',
+	'value.date': ' < iso-date > ',
+	'value.datatype': ' < datatype e.g. rainfall or temperature> ',
+	'value.period': ' < period > ',
+	'value.fill': ' < fill > '[, 'value.production': ' < production > ']
+		[, 'value.aggregation': ' < aggregation > ']
+}"
+Properties should describe the dataset for the value being requested (as above)
+Will return a document containing the value of the specified station for the given date
+Example URL template:
+https://api.hcdp.ikewai.org/stations?q=<URI_encoded_query>&limit=<document _limit>&offset=<offset>
+Example CURL: 
+curl -k "https://api.hcdp.ikewai.org/stations?q={'name':'hcdp_station_value','value.date':'2022-03-08','value.period':'day','value.fill':'raw','value.datatype':'temperature','value.aggregation':'max'}&limit=10000&offset=0" -H "Authorization: Bearer API-AUTH-TOKEN"
+curl -k "https://api.hcdp.ikewai.org/stations?q=%7B%27name%27:%27hcdp_station_value%27,%27value.date%27:%272022-02%27,%27value.period%27:%27month%27,%27value.fill%27:%27partial%27,%27value.datatype%27:%27rainfall%27,%27value.production%27:%27new%27%7D&limit=10000&offset=0" -H "Authorization: Bearer <API-AUTH-TOKEN>"
+
+
+Station Timeseries:
+q:"{'$and': [{
+			'name': 'hcdp_station_value',
+			'value.station_id': ' < station_id > ',
+			'value.datatype': ' < datatype i.e rainfall or temperature > ',
+			'value.period': ' < period > ',
+			'value.fill': ' < fill > '[, 'value.production': 'production']
+				[, 'value.aggregation': ' < aggregation > ']
+		},
+		{
+			'value.date': {
+				'$gte': ' < start_date - iso date > '
+			}
+		},
+		{
+			'value.date': {
+				'$lte': ' < end_date - iso date > '
+			}
+		}
+	]
+}"
+
+Properties should describe the dataset for the value being requested (as above)
+Will provide data for the specified station between the provided dates
+Example URL template:
+https://api.hcdp.ikewai.org/stations?q=<URI_encoded_query>&limit=<document _limit>&offset=<offset>
+Example CURL:
+curl -k "https://api.hcdp.ikewai.org/stations?q={'$and':[{'name':'hcdp_station_value','value.station_id':'1094.2','value.period':'month','value.fill':'partial','value.datatype':'rainfall','value.production':'new'},{'value.date':{'$gte':'1994-01'}},{'value.date':{'$lt':'1995-01'}}]}&limit=10000&offset=0" -H "Authorization: Bearer API-AUTH-TOKEN"
+curl -k "https://api.hcdp.ikewai.org/stations?q=%7B%27%24and%27%3A%5B%7B%27name%27%3A%27hcdp_station_value%27%2C%27value.station_id%27%3A%271094.2%27%2C%27value.period%27%3A%27month%27%2C%27value.fill%27%3A%27partial%27%2C%27value.datatype%27%3A%27rainfall%27%2C%27value.production%27%3A%27new%27%7D%2C%7B%27value.date%27%3A%7B%27%24gte%27%3A%271994-01%27%7D%7D%2C%7B%27value.date%27%3A%7B%27%24lt%27%3A%271995-01%27%7D%7D%5D%7D%26limit%3D10000%26offset%3D0" -H "Authorization: Bearer API-AUTH-TOKEN"
+
+
+/mesonet/db/measurements
+type: GET
+query fields:
+station_ids (optional): A comma separated list of four digit station IDs to be retrieved (e.g. 0115).
+start_date (optional): An ISO 8601 formatted date string representing the earliest date to return records from.
+end_date (optional): An ISO 8601 formatted date string representing the latest date to return records from.
+var_ids (optional): A comma separated list of variable IDs to be retrieved.
+intervals (optional): a comma separated list of variable data intervals in seconds to be retrieved. This will limit the variables returned to variables measured at the specified intervals.
+flags (optional): A comma separated list of data flag values to be retrieved
+location (optional): The mesonet location to retrieve data for, hawaii or american_samoa. Default value: hawaii
+limit (optional): The maximum number of records to be retrieved. This value cannot be greater than 1000000 (one million). Values less than 1 will be set to the maximum value. Default value: 10000.
+For "wide" row modes, the number of returned rows will be less than or equal to the provided limit. The limit will be applied to individual records, so the real number of rows will be between limit/n and limit where n is the number of variables included in the query. The number of rows will be limit/n in the case where every variable has a record for every timestamp, and limit where exactly 1 variable has a record for every timestamp. Please scale your limit accordingly to get more rows in a single query. when using these modes.
+offset (optional): How many records to offset the result by. This can be combined with the limit parameter to retrieve large groups of data in chunks.
+For "wide" row modes, the offset will be applied to individual records and the number of rows offset will be less than or equal to the offset provided. See the description in the limit option.
+reverse (optional): By default values will be sorted by timestamp starting with the most recent value. Passing a value to this parameter will reverse the order of the data so the oldest values are returned first.
+join_metadata (optional): If a value is provided for this parameter, station and variable metadata will be included in each row. For "wide" row modes only station metadata will be included.
+local_tz (optional): If a value is provided for this parameter, returned dates will be converted to the timezone local to the mesonet location
+row_mode (optional): 
+array
+The query will return a column index and data as a 2D array.
+wide_array
+The query will return a column index and data as a 2D array. Rows will be grouped by station and timestamp with variables as columns. Queries can still be limited by flag value, but the flag values will not be returned in this mode. Variable metadata will not be returned in this mode.
+json
+The query will return an array of JSON objects representing each row of data keyed by column names.
+wide_json
+The query will return an array of JSON objects representing each row of data keyed by column names. Rows will be grouped by station and timestamp with variables as columns. Queries can still be limited by flag value, but the flag values will not be returned in this mode. Variable metadata will not be returned in this mode.
+returns:
+row_mode = "array" OR row_mode = "wide_array":
+A JSON object with the keys "index" and "data". Where "index" is an array of the data column names and "data" an array of records with columns in the order indicated by the index.
+else:
+An array of JSON objects records keyed by the column name.
+Example CURL: 
+curl -k "https://api.hcdp.ikewai.org/mesonet/db/measurements?location=hawaii&station_ids=0145,0141,0115&var_ids=RH_1_Min,Tair_2_Max&start_date=2023-11-01T00%3A00%3A00-10%3A00&join_metadata=true" -H "Authorization: Bearer <API-AUTH-TOKEN>"
+
+/mesonet/db/stations
+type: GET
+query fields:
+station_ids (optional): A comma separated list of four digit station IDs to be retrieved (e.g. 0115).
+location (optional): The mesonet location to retrieve data for, hawaii or american_samoa. Default value: hawaii
+limit (optional): The maximum number of records to be retrieved. Values less than 1 will be have no limit
+offset (optional): How many records to offset the result by. This can be combined with the limit parameter to retrieve large groups of data in chunks.
+row_mode (optional): By default data will be returned as an array of JSON objects representing each row of data keyed by column names. If rowMode is "array" the query will return a column index and data as a 2D array.
+returns:
+row_mode = "array":
+A JSON object with the keys "index" and "data". Where "index" is an array of the data column names and "data" an array of records with columns in the order indicated by the index.
+else:
+An array of JSON objects records keyed by the column name.
+Example CURL: 
+curl -k "https://api.hcdp.ikewai.org/mesonet/db/stations" -H "Authorization: Bearer <API-AUTH-TOKEN>"
+
+/mesonet/db/variables
+type: GET
+query fields:
+var_ids (optional): A comma separated list of variable IDs to be retrieve
+limit (optional): The maximum number of records to be retrieved. Values less than 1 will be have no limit
+offset (optional): How many records to offset the result by. This can be combined with the limit parameter to retrieve large groups of data in chunks.
+row_mode (optional): By default data will be returned as an array of JSON objects representing each row of data keyed by column names. If rowMode is "array" the query will return a column index and data as a 2D array.
+returns:
+row_mode = "array":
+A JSON object with the keys "index" and "data". Where "index" is an array of the data column names and "data" an array of records with columns in the order indicated by the index.
+else:
+An array of JSON objects records keyed by the column name.
+Example CURL: 
+curl -k "https://api.hcdp.ikewai.org/mesonet/db/variables" -H "Authorization: Bearer <API-AUTH-TOKEN>"
